@@ -1,6 +1,11 @@
+## The -vnc image below causes problems because it
+## lacks packages such as graphviz that also cannot
+## be installed via apt.
+#image:
+#  gitpod/workspace-full-vnc
+
 tasks:
-  - command: >
-        bash -i .devcontainer/install.sh
+  - init: bash -i .devcontainer/install.sh
     
 vscode:
   extensions:
