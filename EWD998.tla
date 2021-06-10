@@ -151,16 +151,17 @@ RecvMsg(i) ==
     /\ UNCHANGED <<token>>
 
 \* Terminate(i) in AsyncTerminationDetection.
-Deactivate(i) ==
-    /\ active[i]
-    /\ active' = [active EXCEPT ![i] = FALSE]
+Deactivate ==
+    /\ active' \in { f \in [ Node -> BOOLEAN] : \A n \in Node: ~active[n] => ~f[n] }
+    \* To avoid generating behaviors that quickly stutter when simulating the spec.
+    \* /\ active' # active
     /\ UNCHANGED <<pending, color, counter, token>>
 
 Environment == 
     \E n \in Node:
         \/ SendMsg(n)
         \/ RecvMsg(n)
-        \/ Deactivate(n)
+        \/ Deactivate
 
 -----------------------------------------------------------------------------
 
