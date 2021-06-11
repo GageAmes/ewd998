@@ -154,7 +154,7 @@ RecvMsg(i) ==
 Deactivate ==
     /\ active' \in { f \in [ Node -> BOOLEAN] : \A n \in Node: ~active[n] => ~f[n] }
     \* To avoid generating behaviors that quickly stutter when simulating the spec.
-    \* /\ active' # active
+    /\ active' # active
     /\ UNCHANGED <<pending, color, counter, token>>
 
 Environment == 
