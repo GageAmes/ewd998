@@ -39,7 +39,7 @@ The remaining concepts this tutorial covers are:
 - CHOOSE operator (Hilbert's epsilon)
 
 ------------------------------- MODULE EWD998 -------------------------------
-EXTENDS Integers \* No longer Naturals \* TODO Do you already see why?
+EXTENDS Integers, TLC \* No longer Naturals \* TODO Do you already see why?
 
 CONSTANT 
     \* @type: Int;
@@ -68,6 +68,7 @@ TypeOK ==
     /\ color \in [Node -> Color]
     /\ counter \in [Node -> Int]
     \* TODO What about  token  ?
+    /\ token \in [pos: Node, color: Color, q: Int]
 
 -----------------------------------------------------------------------------
 
@@ -75,21 +76,44 @@ Init ==
     /\ active \in [Node -> BOOLEAN]
     /\ pending = [i \in Node |-> 0]
     (* Rule 0 *)
+    /\ color \in [Node -> Color]
+    /\ counter \in [Node -> Int]
+    /\ token \in [pos: 0, color: {"black"}, q: Int]
 
 -----------------------------------------------------------------------------
 
 InitiateProbe ==
     (* Rules 1 + 5 + 6 *)
-    /\ UNCHANGED <<>>
+    \* Rule 5 - Current round is inconclusive
+    /\ \/ token.color = "black"
+       \/ color[0] = "black" \* Why?? 
+       \/ counter[0] + token.q > 0 \* There are Pending messages
+       \/ token.pos # 0
+    \* Rule 1
+    /\ token' = [pos |-> N - 1, color |-> "white", q |-> 0]
+    \* Rule 6
+    /\ color' = [color EXCEPT ![0] = "white"]
+    /\ UNCHANGED <<active, pending, counter>>
 
 PassToken(i) ==
+    \* Check we have the token
+    /\ token.pos = i
     (* Rules 2 + 4 + 7 *)
-    /\ UNCHANGED <<>>
+    \* Rule 2 and 4
+    /\ ~active[i]
+    /\ token' = [token EXCEPT !.pos = @ - 1,
+                              !.color = IF color[i] = "black" THEN "black" ELSE @,
+                              !.q = @ + counter[i]
+                ]
+    \* Rule 7
+    /\ color' = [color EXCEPT ![i] = "white"]
+    /\ UNCHANGED <<active, pending, counter>>
 
 System ==
     \/ InitiateProbe
     \* TODO Who can pass the token?
-    \/ \E i \in Node : PassToken(i)
+    \* Node 0 cannot pass the token
+    \/ \E i \in Node \ {0} : PassToken(i)
 
 
 -----------------------------------------------------------------------------
@@ -97,7 +121,9 @@ System ==
 SendMsg(i) ==
     (* Rule 0 *)
     /\ active[i]
-    /\ UNCHANGED <<>>
+    /\ counter' = [counter EXCEPT ![i] = @ + 1]
+    /\ \E j \in Node : pending' = [pending EXCEPT ![j] = @ + 1]
+    /\ UNCHANGED <<active, token, color>>
 
 \* Wakeup(i) in AsyncTerminationDetection.
 RecvMsg(i) ==
@@ -105,7 +131,9 @@ RecvMsg(i) ==
     /\ active' = [active EXCEPT ![i] = TRUE]
     /\ pending' = [pending EXCEPT ![i] = @ - 1]
     (* Rule 0 + 3 *)
-    /\ UNCHANGED <<>>
+    /\ counter' = [counter EXCEPT ![i] = @ - 1]
+    /\ color' = [color EXCEPT ![i] = "black"]
+    /\ UNCHANGED <<token>>
 
 \* Terminate(i) in AsyncTerminationDetection.
 Deactivate(i) ==
@@ -125,5 +153,8 @@ Next ==
   System \/ Environment
 
 Spec == Init /\ [][Next]_vars
+
+Foo ==
+    TLCGet("level") < 56
 
 =============================================================================
